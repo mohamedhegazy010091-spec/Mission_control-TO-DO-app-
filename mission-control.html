@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mission Control</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #f0f6ff;
+  color: #1a2a3a;
+  font-family: 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  padding: 24px 16px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+header { text-align:center; margin-bottom:24px; }
+.title { font-size:26px; font-weight:700; letter-spacing:4px; color:#1a6fc4; text-transform:uppercase; }
+.subtitle { font-size:11px; color:#7aaad8; letter-spacing:3px; margin-top:3px; }
+.stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px; }
+.stat { background:#fff; border:1px solid #cde0f8; border-radius:10px; padding:10px; text-align:center; }
+.stat-val { font-size:22px; font-weight:700; color:#1a6fc4; }
+.stat-lbl { font-size:10px; letter-spacing:2px; color:#7aaad8; margin-top:2px; text-transform:uppercase; }
+.card { background:#fff; border:1px solid #cde0f8; border-radius:12px; padding:16px; margin-bottom:14px; }
+.row { display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+input[type="text"], input[type="date"], input[type="time"], select {
+  background:#f5f9ff; border:1px solid #cde0f8; border-radius:8px;
+  color:#1a2a3a; font-family:inherit; font-size:13px; padding:8px 12px;
+  outline:none; transition:border-color 0.2s;
+}
+input[type="text"]:focus, input[type="date"]:focus, input[type="time"]:focus, select:focus { border-color:#5aaaf0; }
+input[type="text"] { flex:1; min-width:160px; }
+input[type="date"], input[type="time"] { width:148px; }
+select { width:150px; cursor:pointer; }
+.add-btn {
+  background:#1a6fc4; border:none; border-radius:8px; color:#fff;
+  font-family:inherit; font-size:13px; font-weight:600; padding:8px 18px;
+  cursor:pointer; transition:all 0.15s; white-space:nowrap;
+}
+.add-btn:hover { background:#155da0; }
+.add-btn:active { transform:scale(0.97); }
+.filters { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+.filter-btn {
+  background:#fff; border:1px solid #cde0f8; border-radius:20px;
+  color:#7aaad8; font-family:inherit; font-size:11px; letter-spacing:1px;
+  padding:5px 14px; cursor:pointer; transition:all 0.15s;
+}
+.filter-btn.active, .filter-btn:hover { background:#1a6fc4; color:#fff; border-color:#1a6fc4; }
+.sort-btn { margin-left:auto; }
+.task {
+  display:flex; align-items:center; gap:10px; padding:12px 14px;
+  border:1px solid #ddeeff; border-radius:10px; margin-bottom:8px;
+  background:#fff; cursor:grab; transition:all 0.2s;
+  animation:fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:none} }
+.task:hover { border-color:#93c5f5; background:#f7fbff; }
+.task.dragging { opacity:0.4; cursor:grabbing; }
+.task.drag-over { border-color:#1a6fc4; background:#eaf3ff; }
+.task.done { opacity:0.5; }
+.task.done .task-name { text-decoration:line-through; color:#aac4df; }
+.drag-handle { color:#c5d9ef; font-size:15px; user-select:none; flex-shrink:0; }
+.priority-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+.p-high { background:#e8404a; }
+.p-med  { background:#f59e0b; }
+.p-low  { background:#1a6fc4; }
+.task-info { flex:1; min-width:0; }
+.task-name { font-size:13px; color:#1a2a3a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.task-meta { display:flex; gap:10px; margin-top:3px; font-size:10px; color:#7aaad8; flex-wrap:wrap; }
+.overdue { color:#e8404a !important; font-weight:600; }
+.timer-badge {
+  background:#eaf3ff; border:1px solid #cde0f8; border-radius:20px;
+  font-size:10px; color:#1a6fc4; padding:3px 10px; font-weight:600;
+  white-space:nowrap; cursor:pointer; transition:all 0.15s;
+}
+.timer-badge:hover { background:#d0e8ff; }
+.timer-badge.running { background:#fff3e0; border-color:#f59e0b; color:#b45309; }
+.timer-badge.paused { background:#f0f6ff; border-color:#93c5f5; color:#1a6fc4; }
+.complete-btn {
+  width:22px; height:22px; border:1.5px solid #cde0f8; border-radius:6px;
+  background:transparent; cursor:pointer; display:flex; align-items:center;
+  justify-content:center; color:transparent; font-size:12px;
+  transition:all 0.15s; flex-shrink:0;
+}
+.complete-btn:hover { border-color:#1a6fc4; color:#1a6fc4; }
+.task.done .complete-btn { background:#1a6fc4; border-color:#1a6fc4; color:#fff; }
+.del-btn {
+  background:transparent; border:none; color:#c5d9ef; font-size:15px;
+  cursor:pointer; padding:2px 5px; border-radius:5px; transition:color 0.15s; flex-shrink:0;
+}
+.del-btn:hover { color:#e8404a; }
+.empty { text-align:center; padding:36px 20px; color:#aac4df; font-size:13px; }
+.notif-bar {
+  display:none; background:#fff3cd; border:1px solid #f59e0b;
+  border-radius:10px; padding:10px 14px; margin-bottom:12px;
+  font-size:13px; color:#92400e; align-items:center; gap:8px;
+}
+.notif-bar.show { display:flex; animation:fadeIn 0.2s; }
+.notif-bar button { margin-left:auto; background:none; border:none; cursor:pointer; font-size:15px; color:#92400e; }
+.section-lbl { font-size:10px; letter-spacing:2px; color:#7aaad8; text-transform:uppercase; margin-bottom:8px; }
+.hint { font-size:11px; color:#7aaad8; margin-top:4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">Mission Control</div>
+  <div class="subtitle">Task Management System</div>
+</header>
+
+<div class="stats-row">
+  <div class="stat"><div class="stat-val" id="s-total">0</div><div class="stat-lbl">Total</div></div>
+  <div class="stat"><div class="stat-val" id="s-active">0</div><div class="stat-lbl">Active</div></div>
+  <div class="stat"><div class="stat-val" id="s-done">0</div><div class="stat-lbl">Done</div></div>
+</div>
+
+<div id="notif-bar" class="notif-bar">
+  <span>🔔</span><span id="notif-msg"></span>
+  <button onclick="dismissNotif()">✕</button>
+</div>
+
+<div class="card">
+  <div class="section-lbl">New Mission</div>
+  <div class="row">
+    <input type="text" id="task-input" placeholder="Enter mission objective..." maxlength="80" />
+    <button class="add-btn" onclick="addTask()">+ Add</button>
+  </div>
+  <div class="row">
+    <select id="priority-sel">
+      <option value="high">🔴 High Priority</option>
+      <option value="med" selected>🟡 Med Priority</option>
+      <option value="low">🔵 Low Priority</option>
+    </select>
+    <input type="date" id="due-date" />
+    <input type="time" id="remind-time" title="Reminder — notified if task not started by this time" />
+  </div>
+  <div class="hint">⏰ Set a reminder time — you'll be notified if the task isn't started by then</div>
+</div>
+
+<div class="filters">
+  <button class="filter-btn active" data-f="all" onclick="setFilter('all',this)">All</button>
+  <button class="filter-btn" data-f="active" onclick="setFilter('active',this)">Active</button>
+  <button class="filter-btn" data-f="done" onclick="setFilter('done',this)">Done</button>
+  <button class="filter-btn sort-btn" onclick="toggleSort()">Sort: <span id="sort-lbl">Default</span></button>
+</div>
+
+<div id="task-list"></div>
+
+<script>
+let tasks = [], filter = 'all', sortMode = 0, dragSrc = null;
+const sortModes = ['Default', 'Priority', 'Due Date'];
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
+
+function saveTasks() {
+  localStorage.setItem('mc_tasks', JSON.stringify(tasks.map(t => ({
+    id:t.id, name:t.name, priority:t.priority, due:t.due,
+    remindTime:t.remindTime, started:t.started, done:t.done,
+    elapsed:t.elapsed, reminderFired:t.reminderFired
+  }))));
+}
+
+function loadTasks() {
+  try {
+    const raw = localStorage.getItem('mc_tasks');
+    if (!raw) return;
+    tasks = JSON.parse(raw).map(t => ({...t, running:false, intervalId:null}));
+  } catch(e) {}
+}
+
+function addTask() {
+  const inp = document.getElementById('task-input');
+  const name = inp.value.trim();
+  if (!name) return;
+  tasks.unshift({
+    id:uid(), name,
+    priority: document.getElementById('priority-sel').value,
+    due: document.getElementById('due-date').value,
+    remindTime: document.getElementById('remind-time').value,
+    started:false, done:false, elapsed:0,
+    running:false, intervalId:null, reminderFired:false
+  });
+  inp.value = '';
+  document.getElementById('remind-time').value = '';
+  saveTasks(); render();
+}
+
+function toggleDone(id) {
+  const t = tasks.find(x => x.id===id);
+  if (!t) return;
+  t.done = !t.done;
+  if (t.done && t.running) stopTimer(t);
+  saveTasks(); render();
+}
+
+function delTask(id) {
+  const t = tasks.find(x => x.id===id);
+  if (t && t.intervalId) clearInterval(t.intervalId);
+  tasks = tasks.filter(x => x.id!==id);
+  saveTasks(); render();
+}
+
+function startTimer(t) {
+  if (t.running || t.done) return;
+  t.running = true; t.started = true;
+  t.intervalId = setInterval(() => { t.elapsed++; updateTimerBadge(t); saveTasks(); }, 1000);
+}
+
+function stopTimer(t) {
+  t.running = false;
+  if (t.intervalId) { clearInterval(t.intervalId); t.intervalId = null; }
+  updateTimerBadge(t);
+}
+
+function toggleTimer(id) {
+  const t = tasks.find(x => x.id===id);
+  if (!t || t.done) return;
+  t.running ? stopTimer(t) : startTimer(t);
+  render();
+}
+
+function fmtElapsed(s) {
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  if (h > 0) return h+'h '+m+'m';
+  if (m > 0) return m+'m '+sec+'s';
+  return sec+'s';
+}
+
+function updateTimerBadge(t) {
+  const el = document.getElementById('badge-'+t.id);
+  if (!el) return;
+  if (t.running) { el.textContent = '⏱ '+fmtElapsed(t.elapsed); el.className='timer-badge running'; }
+  else if (t.elapsed > 0) { el.textContent = '⏸ '+fmtElapsed(t.elapsed); el.className='timer-badge paused'; }
+  else { el.textContent = '⏱ Start timer'; el.className='timer-badge'; }
+}
+
+function checkReminders() {
+  const now = new Date();
+  const hhmm = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  tasks.forEach(t => {
+    if (t.remindTime && !t.done && !t.started && !t.reminderFired && t.remindTime === hhmm) {
+      t.reminderFired = true;
+      showNotif('Reminder: "'+t.name+'" hasn\'t been started yet!');
+      if (Notification.permission === 'granted') {
+        new Notification('Mission Control', { body: '"'+t.name+'" hasn\'t been started yet!' });
+      }
+      saveTasks();
+    }
+  });
+}
+
+function showNotif(msg) {
+  document.getElementById('notif-msg').textContent = msg;
+  document.getElementById('notif-bar').classList.add('show');
+}
+function dismissNotif() { document.getElementById('notif-bar').classList.remove('show'); }
+
+function reqNotifPermission() {
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+}
+
+function isOverdue(due) { if(!due) return false; return new Date(due) < new Date(new Date().toDateString()); }
+function fmtDate(due) { if(!due) return ''; return new Date(due+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+
+function setFilter(f, el) {
+  filter = f;
+  document.querySelectorAll('.filter-btn[data-f]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function toggleSort() {
+  sortMode = (sortMode+1) % 3;
+  document.getElementById('sort-lbl').textContent = sortModes[sortMode];
+  render();
+}
+
+const pOrder = {high:0,med:1,low:2};
+function getSorted() {
+  let list = tasks.filter(t => filter==='all' ? true : filter==='active' ? !t.done : t.done);
+  if (sortMode===1) list = [...list].sort((a,b) => pOrder[a.priority]-pOrder[b.priority]);
+  if (sortMode===2) list = [...list].sort((a,b) => { if(!a.due&&!b.due) return 0; if(!a.due) return 1; if(!b.due) return -1; return a.due.localeCompare(b.due); });
+  return list;
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function render() {
+  const list = getSorted();
+  const el = document.getElementById('task-list');
+  const total = tasks.length, done = tasks.filter(t=>t.done).length;
+  document.getElementById('s-total').textContent = total;
+  document.getElementById('s-active').textContent = total - done;
+  document.getElementById('s-done').textContent = done;
+  if (!list.length) { el.innerHTML='<div class="empty">No missions yet — add one above</div>'; return; }
+  el.innerHTML = list.map(t => {
+    const badge = t.running ? '⏱ '+fmtElapsed(t.elapsed) : t.elapsed>0 ? '⏸ '+fmtElapsed(t.elapsed) : '⏱ Start timer';
+    const badgeCls = 'timer-badge'+(t.running?' running':t.elapsed>0?' paused':'');
+    return `<div class="task${t.done?' done':''}" draggable="true" data-id="${t.id}"
+      ondragstart="dragStart(event)" ondragover="dragOver(event)" ondrop="drop(event)"
+      ondragleave="dragLeave(event)" ondragend="dragEnd(event)">
+      <span class="drag-handle">⠿</span>
+      <span class="priority-dot p-${t.priority}"></span>
+      <div class="task-info">
+        <div class="task-name">${esc(t.name)}</div>
+        <div class="task-meta">
+          <span>${t.priority.toUpperCase()}</span>
+          ${t.due?`<span class="${isOverdue(t.due)&&!t.done?'overdue':''}">${isOverdue(t.due)&&!t.done?'⚠ Overdue: ':'Due: '}${fmtDate(t.due)}</span>`:''}
+          ${t.remindTime?`<span>🔔 ${t.remindTime}</span>`:''}
+        </div>
+      </div>
+      <span class="${badgeCls}" id="badge-${t.id}" onclick="toggleTimer('${t.id}')">${badge}</span>
+      <button class="complete-btn" onclick="toggleDone('${t.id}')">✓</button>
+      <button class="del-btn" onclick="delTask('${t.id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function dragStart(e) { dragSrc=e.currentTarget.dataset.id; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
+function dragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function dragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function dragEnd(e) { e.currentTarget.classList.remove('dragging'); document.querySelectorAll('.task').forEach(t=>t.classList.remove('drag-over')); }
+function drop(e) {
+  e.preventDefault();
+  const targetId = e.currentTarget.dataset.id;
+  if (!dragSrc || dragSrc===targetId) return;
+  const si = tasks.findIndex(t=>t.id===dragSrc), ti = tasks.findIndex(t=>t.id===targetId);
+  const [moved] = tasks.splice(si,1); tasks.splice(ti,0,moved);
+  saveTasks(); render();
+}
+
+document.getElementById('task-input').addEventListener('keydown', e => { if(e.key==='Enter') addTask(); });
+setInterval(checkReminders, 15000);
+reqNotifPermission();
+loadTasks();
+render();
+</script>
+</body>
+</html>
